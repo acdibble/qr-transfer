@@ -4,7 +4,7 @@ import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
 import QRCode, { QRCodeOptions } from 'qrcode';
 import { io, Socket } from 'socket.io-client';
 
-const [, , , file] = process.argv;
+const [, , file] = process.argv;
 
 if (!file) {
   console.error('Usage:');

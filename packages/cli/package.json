@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc --build",
-    "dev": "npx nodemon src -e ts --exec \"npm run build && node dist\""
+    "dev": "npx nodemon --watch src -e ts --exec \"npm run build && node dist\""
   },
   "keywords": [],
   "author": "",
