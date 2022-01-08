@@ -6,11 +6,7 @@ async function* iterateFile(file: File) {
   const reader = (file.stream() as unknown as ReadableStream).getReader();
 
   let current;
-  for (
-    current = await reader.read();
-    !current.done;
-    current = await reader.read()
-  ) {
+  for (current = await reader.read(); !current.done; current = await reader.read()) {
     yield current.value;
   }
 }
@@ -21,14 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
   io('/', { autoConnect: false })
     .on(Event.QRCode, ({ url }: { url: string }) => {
       document.getElementById('qr-url')!.innerText = url;
-      QRCode.toCanvas(
-        document.getElementById('qr-code')!,
-        url,
-        { scale: 10 },
-        (err) => {
-          if (err) console.error(err);
-        }
-      );
+      QRCode.toCanvas(document.getElementById('qr-code')!, url, { scale: 10 }, (err) => {
+        if (err) console.error(err);
+      });
     })
     .on(Event.FileRequest, async function (this: Socket) {
       const file = fileInput.files?.[0];
@@ -40,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.value = '';
       }
 
-      await emitPromisified(this, Event.FileChunk, null);
+      this.emit(Event.FileEnd);
     })
     .connect();
 

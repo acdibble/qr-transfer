@@ -30,7 +30,7 @@ io(QR_CODE_SERVER_URL, { autoConnect: false })
     for await (const chunk of fs.createReadStream(file)) {
       await emitPromisified(this, Event.FileChunk, chunk);
     }
-    await emitPromisified(this, Event.FileChunk, null);
+    this.emit(Event.FileEnd);
     process.exit(0);
   })
   .connect();
