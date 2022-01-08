@@ -15,9 +15,9 @@ async function* iterateFile(file: File) {
   }
 }
 
-let file: File | undefined;
-
 document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('file-input') as HTMLInputElement;
+
   io('/', { autoConnect: false })
     .on(Event.QRCode, ({ url }: { url: string }) => {
       document.getElementById('qr-url')!.innerText = url;
@@ -31,19 +31,18 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     })
     .on(Event.FileRequest, async function (this: Socket) {
-      if (!file) return;
-      for await (const chunk of iterateFile(file)) {
-        console.log(chunk);
-        await emitPromisified(this, Event.FileChunk, chunk);
+      const file = fileInput.files?.[0];
+      if (file) {
+        for await (const chunk of iterateFile(file)) {
+          await emitPromisified(this, Event.FileChunk, chunk);
+        }
+
+        fileInput.value = '';
       }
 
       await emitPromisified(this, Event.FileChunk, null);
     })
     .connect();
-});
 
-document
-  .getElementById('file-input')
-  ?.addEventListener('change', function (this: HTMLInputElement) {
-    file = this.files?.[0];
-  });
+  fileInput.value = '';
+});

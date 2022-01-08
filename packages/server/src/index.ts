@@ -13,13 +13,35 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const idMap = new Cache<string, Socket>();
 
+const prepareSocket = async (socket: Socket) => {
+  let uuid: string;
+
+  do {
+    uuid = randomUUID();
+  } while (idMap.has(uuid));
+
+  try {
+    idMap.set(uuid, socket);
+
+    socket.emit(Event.QRCode, {
+      url: new URL(`/files/${uuid}`, QR_CODE_SERVER_URL).toString(),
+    });
+
+    socket.once('disconnect', () => {
+      idMap.delete(uuid);
+    });
+  } catch (err) {
+    idMap.delete(uuid);
+  }
+};
+
 const app = express()
   .get('/files/:uuid', async (req, res) => {
     const { uuid } = req.params;
     const socket = idMap.pop(uuid);
 
     if (!socket) {
-      res.sendStatus(400);
+      res.sendStatus(404);
       return;
     }
 
@@ -36,7 +58,14 @@ const app = express()
         res.write(chunk);
         ack(null);
       }
-      res.end();
+
+      if (res.headersSent) {
+        res.end();
+      } else {
+        res.status(400).send('No data received from client');
+      }
+
+      await prepareSocket(socket);
     } catch {
       // todo
       res.sendStatus(500);
@@ -50,27 +79,7 @@ const app = express()
 const server = http.createServer(app);
 const io = new Server(server);
 
-io.on('connection', async (socket) => {
-  let uuid: string;
-
-  do {
-    uuid = randomUUID();
-  } while (idMap.has(uuid));
-
-  try {
-    idMap.set(uuid, socket);
-
-    socket.emit(Event.QRCode, {
-      url: new URL(`/files/${uuid}`, QR_CODE_SERVER_URL).toString(),
-    });
-
-    socket.on('disconnect', () => {
-      idMap.delete(uuid);
-    });
-  } catch (err) {
-    idMap.delete(uuid);
-  }
-});
+io.on('connection', prepareSocket);
 
 server.listen(
   Number.parseInt(process.env.QR_SERVER_PORT as string, 10) || 1313
