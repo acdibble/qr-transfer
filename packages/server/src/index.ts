@@ -8,6 +8,7 @@ import * as path from 'path';
 import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
 import { pipeline } from 'stream/promises';
 import { createGzip } from 'zlib';
+import { on, once } from 'events';
 import Cache from './Cache.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,31 +37,20 @@ const prepareSocket = async (socket: Socket) => {
   }
 };
 
-const once = <T extends any[]>(socket: Socket, event: Event): Promise<T> =>
-  new Promise<T>((resolve, reject) => {
-    let resolved = false;
-    const onSuccess = (...args: any[]) => {
-      resolved = true;
-      resolve(args as T);
-    };
-    socket.once(event, onSuccess);
-    setTimeout(() => {
-      if (!resolved) {
-        socket.removeListener(event, onSuccess);
-        reject(Error('timeout'));
-      }
-    }, 5000);
+const timeout = (ms: number): Promise<never> =>
+  new Promise((resolve, reject) => {
+    setTimeout(reject, ms, Error('timeout'));
   });
 
 async function* getFileChunks(socket: Socket) {
-  while (true) {
-    const value = await Promise.race([
-      once(socket, Event.FileChunk),
-      once(socket, Event.FileEnd).then(() => null),
-    ]).catch(() => null);
+  const chunksIt = on(socket, Event.FileChunk);
+  const fileEnd = once(socket, Event.FileEnd).then(() => null);
 
-    if (value === null) break;
-    const [chunk, next] = value;
+  while (true) {
+    const result = await Promise.race([chunksIt.next(), fileEnd, timeout(5000)]);
+
+    if (result === null) return;
+    const [chunk, next] = result.value;
     yield chunk;
     next(null);
   }
