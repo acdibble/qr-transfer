@@ -1,14 +1,16 @@
 /* eslint-disable */
-// @ts-nocheck
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 
+// @ts-ignore
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+const srcDir = path.join(dirname, 'src');
 
 /** @type {import('webpack').Configuration} */
 export default {
-  entry: path.resolve(dirname, 'src', 'index.ts'),
+  entry: path.resolve(srcDir, 'index.ts'),
   output: {
     path: path.resolve(dirname, 'dist'),
     filename: 'index.js',
@@ -25,12 +27,22 @@ export default {
         },
         exclude: /node_modules/,
       },
+      {
+        test: /\.css$/i,
+        include: path.join(srcDir),
+        use: [{ loader: MiniCssExtractPlugin.loader }, 'css-loader', 'postcss-loader'],
+      },
     ],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.resolve(dirname, 'src', 'index.html'),
+      template: path.resolve(srcDir, 'index.html'),
       publicPath: '/static',
+    }),
+    new MiniCssExtractPlugin({
+      filename: '[name].css',
+      chunkFilename: '[id].css',
+      ignoreOrder: false,
     }),
   ],
   resolve: {

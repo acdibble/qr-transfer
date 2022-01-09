@@ -5,10 +5,25 @@
     <title>QR Transfer</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
   </head>
+
   <body>
-    <canvas id="qr-code"></canvas>
-    <br />
-    <button id="copy-button" type="button">Copy</button><div id="qr-url"></div>
-    <input id="file-input" type="file"></input>
+    <div class="container mx-auto max-w-screen-lg flex columns-auto">
+      <h1 class="text-3xl font-bold underline">QR Transfer</h1>
+      <div class="w-auto">
+        <canvas id="qr-code" class="w-full"></canvas>
+        <br />
+        <div class="border-2 flex max-w rounded-sm">
+          <button
+            id="copy-button"
+            class="w-1/4 text-center bg-gray-600 hover:bg-gray-700 text-gray-100 rounded-sm"
+          >
+            Copy
+          </button>
+          <input disabled="true" type="text" id="qr-url" class="w-3/4 text-center" />
+        </div>
+        <br />
+        <input id="file-input" type="file" />
+      </div>
+    </div>
   </body>
 </html>

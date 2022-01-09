@@ -1,5 +1,6 @@
 import { createSocket } from 'common';
 import QRCode from 'qrcode';
+import './style.css';
 
 async function* iterateFile(file: File) {
   const reader = (file.stream() as unknown as ReadableStream).getReader();
@@ -17,17 +18,22 @@ async function* noopStream() {
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('file-input') as HTMLInputElement;
   const copyButton = document.getElementById('copy-button') as HTMLButtonElement;
-  const qrCodeDiv = document.getElementById('qr-url') as HTMLDivElement;
+  const qrCodeDiv = document.getElementById('qr-url') as HTMLInputElement;
+  let downloadURL: string | undefined;
 
   copyButton.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(qrCodeDiv.innerText);
+    if (downloadURL) {
+      await navigator.clipboard.writeText(downloadURL);
+    }
   });
 
   fileInput.value = '';
 
   const onQRCode = (url: string) => {
-    qrCodeDiv.innerText = url;
-    QRCode.toCanvas(document.getElementById('qr-code')!, url, { scale: 10 }, (err) => {
+    downloadURL = url;
+    const uuid = url.split('/').at(-1) as string;
+    qrCodeDiv.value = uuid;
+    QRCode.toCanvas(document.getElementById('qr-code')!, url, { width: 500 }, (err) => {
       if (err) console.error(err);
     });
   };
