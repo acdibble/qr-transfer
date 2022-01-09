@@ -9,6 +9,7 @@ import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
 import { pipeline } from 'stream/promises';
 import { createGzip } from 'zlib';
 import { on, once } from 'events';
+import cookieParser from 'cookie-parser';
 import Cache from './Cache.js';
 
 type AcknowledgementMessage<T> = [T, (error: Error | null) => void];
@@ -66,8 +67,19 @@ async function* getFileChunks(socket: Socket) {
 }
 
 const app = express()
+  .use(cookieParser())
   .get('/files/:uuid', async (req, res) => {
     const { uuid } = req.params;
+
+    const { resource } = req.cookies ?? {};
+    if (resource !== uuid) {
+      res.setHeader('set-cookie', `resource=${uuid}`);
+      const url = new URL(req.originalUrl, `${req.protocol}://${req.get('host')}`);
+      res.setHeader('location', url.toString());
+      res.sendStatus(302);
+      return;
+    }
+
     const socket = idMap.pop(uuid);
 
     if (!socket) {
