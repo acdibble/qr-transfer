@@ -1,7 +1,8 @@
 import * as fs from 'fs';
-import { createSocket } from 'common';
+import { createSocket, type Metadata } from 'common';
 import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
 import QRCode, { QRCodeOptions } from 'qrcode';
+import mime from 'mime-types';
 
 const [, , file] = process.argv;
 
@@ -21,8 +22,14 @@ const onQRCode = (url: string) => {
   }, console.error);
 };
 
+const getMetadata = (): Metadata => {
+  const type = mime.lookup(file);
+  return { mimeType: type || null };
+};
+
 createSocket({
   onQRCode,
+  getMetadata,
   url: QR_CODE_SERVER_URL,
   afterRequest: () => process.exit(0),
   getStream: () => fs.createReadStream(file)[Symbol.asyncIterator](),

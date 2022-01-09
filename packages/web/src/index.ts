@@ -1,4 +1,4 @@
-import { createSocket } from 'common';
+import { createSocket, Metadata } from 'common';
 import QRCode from 'qrcode';
 import './style.css';
 
@@ -38,9 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  const getMetadata = (): Metadata => {
+    const file = fileInput.files?.[0];
+    return { mimeType: file?.type ?? null };
+  };
+
   createSocket({
-    url: '/',
     onQRCode,
+    getMetadata,
+    url: '/',
     afterRequest: () => {
       fileInput.value = '';
     },

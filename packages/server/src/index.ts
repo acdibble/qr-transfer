@@ -1,6 +1,6 @@
 import http from 'http';
 import express from 'express';
-import { Event } from 'common';
+import { Event, Metadata } from 'common';
 import { Server, type Socket } from 'socket.io';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
@@ -10,6 +10,8 @@ import { pipeline } from 'stream/promises';
 import { createGzip } from 'zlib';
 import { on, once } from 'events';
 import Cache from './Cache.js';
+
+type AcknowledgementMessage<T> = [T, (error: Error | null) => void];
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,6 +37,13 @@ const prepareSocket = async (socket: Socket) => {
   } catch (err) {
     idMap.delete(uuid);
   }
+};
+
+const onceWithAcknowledgement = async <T>(socket: Socket, event: Event): Promise<T> => {
+  const promise = once(socket.timeout(5000), event);
+  const [payload, ack] = (await promise) as AcknowledgementMessage<T>;
+  ack(null);
+  return payload;
 };
 
 const timeout = (ms: number): Promise<never> =>
@@ -67,14 +76,18 @@ const app = express()
     }
 
     try {
-      const it = getFileChunks(socket);
+      const metadataPromise = onceWithAcknowledgement<Metadata>(socket, Event.FileMetadata);
       socket.emit(Event.FileRequest);
+      const it = getFileChunks(socket);
+
+      const { mimeType } = await metadataPromise;
 
       const { value: firstChunk, done } = await it.next();
 
       if (done) {
         res.status(400).send('No data received from client\n');
       } else {
+        res.setHeader('content-type', mimeType ?? 'application/octet-stream');
         res.setHeader('content-encoding', 'gzip');
         const gzip = createGzip();
         gzip.write(firstChunk);
