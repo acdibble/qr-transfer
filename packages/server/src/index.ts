@@ -74,13 +74,12 @@ const app = express()
       } else {
         res.status(400).send('No data received from client');
       }
-
-      await prepareSocket(socket);
     } catch (err) {
       console.error(err);
       res.sendStatus(500);
     } finally {
       idMap.delete(uuid);
+      await prepareSocket(socket);
     }
   })
   .use('/static', express.static(path.join(dirname, '..', '..', 'web', 'dist')))
