@@ -6,7 +6,8 @@ import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
-import { once } from 'events';
+import { pipeline } from 'stream/promises';
+import { createGzip } from 'zlib';
 import Cache from './Cache.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,17 +36,20 @@ const prepareSocket = async (socket: Socket) => {
   }
 };
 
+const once = <T extends any[]>(socket: Socket, event: Event): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    socket.once(event, (...args) => resolve(args as T));
+    setTimeout(reject, 5000, Error('timeout'));
+  });
+
 async function* getFileChunks(socket: Socket) {
   while (true) {
     const value = await Promise.race([
-      once(socket.timeout(5000), Event.FileChunk).catch(() => null),
-      once(socket.timeout(5000), Event.FileEnd).then(
-        () => null,
-        () => null
-      ),
-    ]);
-    if (value === null) break;
+      once(socket, Event.FileChunk),
+      once(socket, Event.FileEnd).then(() => null),
+    ]).catch(() => null);
 
+    if (value === null) break;
     const [chunk, ack] = value;
     ack(null);
     yield chunk;
@@ -63,16 +67,18 @@ const app = express()
     }
 
     try {
+      const it = getFileChunks(socket);
       socket.emit(Event.FileRequest);
 
-      for await (const chunk of getFileChunks(socket)) {
-        res.write(chunk);
-      }
+      const { value: firstChunk, done } = await it.next();
 
-      if (res.headersSent) {
-        res.end();
+      if (done) {
+        res.status(400).send('No data received from client\n');
       } else {
-        res.status(400).send('No data received from client');
+        res.setHeader('content-encoding', 'gzip');
+        const gzip = createGzip();
+        gzip.write(firstChunk);
+        await pipeline(it, gzip, res);
       }
     } catch (err) {
       console.error(err);
