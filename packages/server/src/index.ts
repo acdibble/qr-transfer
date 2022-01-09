@@ -76,7 +76,11 @@ const app = express()
       }
     } catch (err) {
       console.error(err);
-      res.sendStatus(500);
+      if (!res.headersSent) {
+        res.sendStatus(500);
+      } else if (!res.writableEnded) {
+        res.end();
+      }
     } finally {
       idMap.delete(uuid);
       await prepareSocket(socket);
