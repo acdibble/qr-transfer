@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/index.js",
   "type": "module",
-  "devDependencies": {
+  "dependencies": {
     "socket.io-client": "^4.4.1"
   },
   "scripts": {

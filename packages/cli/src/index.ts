@@ -1,8 +1,7 @@
 import * as fs from 'fs';
-import { emitPromisified, Event } from 'common';
+import { createSocket } from 'common';
 import { QR_CODE_SERVER_URL } from 'common/dist/constants.js';
 import QRCode, { QRCodeOptions } from 'qrcode';
-import { io, Socket } from 'socket.io-client';
 
 const [, , file] = process.argv;
 
@@ -12,25 +11,19 @@ if (!file) {
   process.exit(64);
 }
 
-const printCode = async (url: string) => {
-  const code = await QRCode.toString(url, {
+const onQRCode = (url: string) => {
+  QRCode.toString(url, {
     type: 'terminal',
     small: true,
-  } as QRCodeOptions);
-  console.log(code);
-  console.log(url);
+  } as QRCodeOptions).then((code) => {
+    console.log(code);
+    console.log(url);
+  }, console.error);
 };
 
-io(QR_CODE_SERVER_URL, { autoConnect: false })
-  .on(Event.QRCode, ({ url }: { url: string }) => {
-    printCode(url).catch(console.error);
-  })
-  // eslint-disable-next-line func-names
-  .on(Event.FileRequest, async function (this: Socket) {
-    for await (const chunk of fs.createReadStream(file)) {
-      await emitPromisified(this, Event.FileChunk, chunk);
-    }
-    this.emit(Event.FileEnd);
-    process.exit(0);
-  })
-  .connect();
+createSocket({
+  onQRCode,
+  url: QR_CODE_SERVER_URL,
+  afterRequest: () => process.exit(0),
+  getStream: () => fs.createReadStream(file)[Symbol.asyncIterator](),
+});

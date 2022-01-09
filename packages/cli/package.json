@@ -16,6 +16,7 @@
     "socket.io-client": "^4.4.1"
   },
   "peerDependencies": {
-    "common": "*"
+    "common": "*",
+    "socket.io-client": "^4.4.1"
   }
 }
