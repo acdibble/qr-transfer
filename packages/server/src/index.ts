@@ -38,8 +38,18 @@ const prepareSocket = async (socket: Socket) => {
 
 const once = <T extends any[]>(socket: Socket, event: Event): Promise<T> =>
   new Promise<T>((resolve, reject) => {
-    socket.once(event, (...args) => resolve(args as T));
-    setTimeout(reject, 5000, Error('timeout'));
+    let resolved = false;
+    const onSuccess = (...args: any[]) => {
+      resolved = true;
+      resolve(args as T);
+    };
+    socket.once(event, onSuccess);
+    setTimeout(() => {
+      if (!resolved) {
+        socket.removeListener(event, onSuccess);
+        reject(Error('timeout'));
+      }
+    }, 5000);
   });
 
 async function* getFileChunks(socket: Socket) {
@@ -50,9 +60,9 @@ async function* getFileChunks(socket: Socket) {
     ]).catch(() => null);
 
     if (value === null) break;
-    const [chunk, ack] = value;
-    ack(null);
+    const [chunk, next] = value;
     yield chunk;
+    next(null);
   }
 }
 
